@@ -253,8 +253,8 @@ mreal_t ASTOperator::evaluate(void* data) const
       break;
     case MOPERATOR_MOD:
     {
-      float vl = _left->evaluate(data);
-      float vr = _right->evaluate(data);
+      mreal_t vl = _left->evaluate(data);
+      mreal_t vr = _right->evaluate(data);
       result = fmodf(vl, vr);
       break;
     }

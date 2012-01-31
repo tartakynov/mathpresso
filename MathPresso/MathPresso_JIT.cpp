@@ -480,8 +480,10 @@ JitVar JitCompiler::doCall(ASTCall* element)
       // Use function builder to build a function prototype.
       AsmJit::FunctionBuilderX builder;
       for (i = 0; i < len; i++)
-        builder.addArgument<float>();
-      builder.setReturnValue<float>();
+	  {
+        builder.addArgument<mreal_t>();
+      }
+      builder.setReturnValue<mreal_t>();
 
       // Create ECall emittable (function call context).
       AsmJit::ECall* ctx = c->call(element->getFunction()->getPtr());
@@ -524,9 +526,9 @@ JitVar JitCompiler::doTransform(ASTTransform* element)
 //! @internal
 union I32FPUnion
 {
-  //! @brief 64 bit signed integer value.
+  //! @brief 32 bit signed integer value.
   int32_t i32;
-  //! @brief 64 bit DP-FP value.
+  //! @brief 32 bit SP-FP value.
   float f32;
 };
 

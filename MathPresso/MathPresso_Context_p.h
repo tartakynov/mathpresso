@@ -37,15 +37,15 @@ struct ASTElement;
 // [MathPresso::MFunc]
 // ============================================================================
 
-typedef float (*MFunc_Ret_F_ARG0)(void);
-typedef float (*MFunc_Ret_F_ARG1)(float);
-typedef float (*MFunc_Ret_F_ARG2)(float, float);
-typedef float (*MFunc_Ret_F_ARG3)(float, float, float);
-typedef float (*MFunc_Ret_F_ARG4)(float, float, float, float);
-typedef float (*MFunc_Ret_F_ARG5)(float, float, float, float, float);
-typedef float (*MFunc_Ret_F_ARG6)(float, float, float, float, float, float);
-typedef float (*MFunc_Ret_F_ARG7)(float, float, float, float, float, float, float);
-typedef float (*MFunc_Ret_F_ARG8)(float, float, float, float, float, float, float, float);
+typedef mreal_t (*MFunc_Ret_F_ARG0)(void);
+typedef mreal_t (*MFunc_Ret_F_ARG1)(mreal_t);
+typedef mreal_t (*MFunc_Ret_F_ARG2)(mreal_t, mreal_t);
+typedef mreal_t (*MFunc_Ret_F_ARG3)(mreal_t, mreal_t, mreal_t);
+typedef mreal_t (*MFunc_Ret_F_ARG4)(mreal_t, mreal_t, mreal_t, mreal_t);
+typedef mreal_t (*MFunc_Ret_F_ARG5)(mreal_t, mreal_t, mreal_t, mreal_t, mreal_t);
+typedef mreal_t (*MFunc_Ret_F_ARG6)(mreal_t, mreal_t, mreal_t, mreal_t, mreal_t, mreal_t);
+typedef mreal_t (*MFunc_Ret_F_ARG7)(mreal_t, mreal_t, mreal_t, mreal_t, mreal_t, mreal_t, mreal_t);
+typedef mreal_t (*MFunc_Ret_F_ARG8)(mreal_t, mreal_t, mreal_t, mreal_t, mreal_t, mreal_t, mreal_t, mreal_t);
 
 // ============================================================================
 // [MathPresso::Function]
@@ -76,7 +76,7 @@ struct Function
 
 struct Variable
 {
-  inline Variable(int type, float value)
+  inline Variable(int type, mreal_t value)
   {
     this->type = type;
     this->c.value = value;
@@ -95,7 +95,7 @@ struct Variable
   {
     struct
     {
-      float value;
+      mreal_t value;
     } c;
 
     struct

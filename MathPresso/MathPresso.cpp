@@ -94,16 +94,16 @@ static mresult_t Context_addFunction(Context* self, const char* name, void* ptr,
 // [MathPresso::Context - Environment]
 // ============================================================================
 
-static float minf(float x, float y) { return x < y ? x : y; }
-static float maxf(float x, float y) { return x > y ? x : y; }
-static float avgf(float x, float y) { return (x + y) * 0.5f; }
+static mreal_t minf(mreal_t x, mreal_t y) { return x < y ? x : y; }
+static mreal_t maxf(mreal_t x, mreal_t y) { return x > y ? x : y; }
+static mreal_t avgf(mreal_t x, mreal_t y) { return (x + y) * 0.5f; }
 
-static float roundf(float x) { return (float)( (int)((x < 0.0f) ? x - 0.5f : x + 0.5f) ); }
-static float recipf(float x) { return 1.0f/x; }
+static mreal_t roundf(mreal_t x) { return (mreal_t)( (int)((x < 0.0f) ? x - 0.5f : x + 0.5f) ); }
+static mreal_t recipf(mreal_t x) { return 1.0f/x; }
 
 #define MP_ADD_CONST(self, name, value) \
   do { \
-    mresult_t __r = self->addConstant(name, (float)(value)); \
+    mresult_t __r = self->addConstant(name, (mreal_t)(value)); \
     if (__r != MRESULT_OK) return __r; \
   } while (0)
 
@@ -191,7 +191,7 @@ mresult_t Context::addFunction(const char* name, void* ptr, int prototype)
 // [MathPresso::Context - Constant]
 // ============================================================================
 
-mresult_t Context::addConstant(const char* name, float value)
+mresult_t Context::addConstant(const char* name, mreal_t value)
 {
   ContextPrivate* d = reinterpret_cast<ContextPrivate*>(_privateData);
   if (d == NULL) return MRESULT_NO_MEMORY;

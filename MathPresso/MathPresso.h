@@ -209,7 +209,7 @@ struct MATHPRESSO_API Context
   mresult_t addFunction(const char* name, void* ptr, int prototype);
 
   //! @brief Add constant to this context.
-  mresult_t addConstant(const char* name, float value);
+  mresult_t addConstant(const char* name, mreal_t value);
 
   //! @brief Add variable to this context.
   mresult_t addVariable(const char* name, int offset, int flags = MVAR_NONE);
