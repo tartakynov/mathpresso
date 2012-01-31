@@ -132,8 +132,8 @@ ASTElement* Optimizer::doOperator(ASTOperator* element)
       }
       p->getParent()->replaceChild(p, keep);
       delete p;
-
-      reinterpret_cast<ASTConstant*>(c)->setValue(result);
+      c->getParent()->replaceChild(c, new ASTConstant(c->getElementId(), result));
+      delete c;
     }
   }
   return element;
