@@ -255,7 +255,7 @@ mreal_t ASTOperator::evaluate(void* data) const
     {
       mreal_t vl = _left->evaluate(data);
       mreal_t vr = _right->evaluate(data);
-      result = fmodf(vl, vr);
+      result = fmod(vl, vr);
       break;
     }
   }

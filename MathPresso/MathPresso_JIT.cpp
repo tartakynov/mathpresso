@@ -120,10 +120,10 @@ struct MATHPRESSO_HIDDEN JitVar
 
 struct MATHPRESSO_HIDDEN JitConst
 {
-  inline JitConst(const JitVar& var, int32_t value) : var(var), value(value) {}
+  inline JitConst(const JitVar& var, int64_t value) : var(var), value(value) {}
 
   JitVar var;
-  int32_t value;
+  int64_t value;
 };
 
 // ============================================================================
@@ -185,8 +185,8 @@ struct MATHPRESSO_HIDDEN JitCompiler
 
   // Constants.
 
-  JitVar getConstantI32(int32_t value);
-  JitVar getConstantF32(float value);
+  JitVar getConstantI64(int64_t value);
+  JitVar getConstantF64(double value);
 
   // Members.
 
@@ -202,6 +202,24 @@ struct MATHPRESSO_HIDDEN JitCompiler
 
   AsmJit::Label dataLabel;
   AsmJit::Buffer dataBuffer;
+};
+
+//! @internal
+union I32FPUnion
+{
+  //! @brief 32 bit signed integer value.
+  int32_t i32;
+  //! @brief 32 bit SP-FP value.
+  float f32;
+};
+
+//! @internal
+union I64FPUnion
+{
+  //! @brief 64 bit signed integer value.
+  int64_t i64;
+  //! @brief 64 bit DP-FP value.
+  double f64;
 };
 
 JitCompiler::JitCompiler(WorkContext& ctx, AsmJit::Compiler* c) :
@@ -224,7 +242,7 @@ void JitCompiler::beginFunction()
 
   resultAddress = c->argGP(1);
   variablesAddress = c->argGP(2);
-  dataAddress = c->newGP(AsmJit::VARIABLE_TYPE_GPN, "data");
+  dataAddress = c->newGP(AsmJit::VARIABLE_TYPE_GPQ, "data");
 
   c->setPriority(variablesAddress, 1);
   c->setPriority(dataAddress, 2);
@@ -249,8 +267,8 @@ MEvalFunc JitCompiler::make()
 
 JitVar JitCompiler::copyVar(const JitVar& other)
 {
-  JitVar v(c->newXMM(AsmJit::VARIABLE_TYPE_XMM_1F), JitVar::FLAG_NONE);
-  c->emit(AsmJit::INST_MOVSS, v.getXmm(), other.getOperand());
+  JitVar v(c->newXMM(AsmJit::VARIABLE_TYPE_XMM_1D), JitVar::FLAG_NONE);
+  c->emit(AsmJit::INST_MOVSD, v.getXmm(), other.getOperand());
   return v;
 }
 
@@ -273,7 +291,7 @@ JitVar JitCompiler::registerVar(const JitVar& other)
 void JitCompiler::doTree(ASTElement* tree)
 {
   JitVar result = registerVar(doElement(tree));
-  c->movss(ptr(resultAddress), result.getXmm());
+  c->movsd(ptr(resultAddress), result.getXmm());
 }
 
 JitVar JitCompiler::doElement(ASTElement* element)
@@ -313,7 +331,7 @@ JitVar JitCompiler::doBlock(ASTBlock* element)
 
 JitVar JitCompiler::doConstant(ASTConstant* element)
 {
-  return getConstantF32(element->getValue());
+  return getConstantF64(element->getValue());
 }
 
 JitVar JitCompiler::doVariable(ASTVariable* element)
@@ -336,7 +354,7 @@ JitVar JitCompiler::doOperator(ASTOperator* element)
     MP_ASSERT(varNode->getElementType() == MELEMENT_VARIABLE);
 
     vr = registerVar(doElement(right));
-    c->emit(AsmJit::INST_MOVSS, ptr(variablesAddress, (sysint_t)varNode->getOffset()), vr.getOperand());
+    c->emit(AsmJit::INST_MOVSD, ptr(variablesAddress, (sysint_t)varNode->getOffset()), vr.getOperand());
     return vr;
   }
 
@@ -373,20 +391,20 @@ JitVar JitCompiler::doOperator(ASTOperator* element)
   switch (operatorType)
   {
     case MOPERATOR_PLUS:
-      c->emit(AsmJit::INST_ADDSS, vl.getOperand(), vr.getOperand());
+      c->emit(AsmJit::INST_ADDSD, vl.getOperand(), vr.getOperand());
       return vl;
     case MOPERATOR_MINUS:
-      c->emit(AsmJit::INST_SUBSS, vl.getOperand(), vr.getOperand());
+      c->emit(AsmJit::INST_SUBSD, vl.getOperand(), vr.getOperand());
       return vl;
     case MOPERATOR_MUL:
-      c->emit(AsmJit::INST_MULSS, vl.getOperand(), vr.getOperand());
+      c->emit(AsmJit::INST_MULSD, vl.getOperand(), vr.getOperand());
       return vl;
     case MOPERATOR_DIV:
-      c->emit(AsmJit::INST_DIVSS, vl.getOperand(), vr.getOperand());
+      c->emit(AsmJit::INST_DIVSD, vl.getOperand(), vr.getOperand());
       return vl;
-    case MOPERATOR_MOD:
-      // TODO: Modulo.
-      return vl;
+    // case MOPERATOR_MOD:
+    // TODO: Modulo.
+    //  return vl;
     default:
       MP_ASSERT_NOT_REACHED();
       return vl;
@@ -419,21 +437,20 @@ JitVar JitCompiler::doCall(ASTCall* element)
       switch (funcId)
       {
         case MFUNCTION_MIN:
-          c->emit(AsmJit::INST_MINSS, vl.getOperand(), vr.getOperand());
+          c->emit(AsmJit::INST_MINSD, vl.getOperand(), vr.getOperand());
           break;
         case MFUNCTION_MAX:
-          c->emit(AsmJit::INST_MAXSS, vl.getOperand(), vr.getOperand());
+          c->emit(AsmJit::INST_MAXSD, vl.getOperand(), vr.getOperand());
           break;
         case MFUNCTION_AVG:
-          c->emit(AsmJit::INST_ADDSS, vl.getOperand(), vr.getOperand());
-          c->emit(AsmJit::INST_MULSS, vl.getOperand(), getConstantF32(0.5f).getOperand());
+          c->emit(AsmJit::INST_ADDSD, vl.getOperand(), vr.getOperand());
+          c->emit(AsmJit::INST_MULSD, vl.getOperand(), getConstantF64(0.5f).getOperand());
           break;
       }
       return vl;
     }
 
     case MFUNCTION_ABS:
-    case MFUNCTION_RECIPROCAL:
     case MFUNCTION_SQRT:
     {
       MP_ASSERT(len == 1);
@@ -444,13 +461,10 @@ JitVar JitCompiler::doCall(ASTCall* element)
       switch (funcId)
       {
         case MFUNCTION_ABS:
-          c->emit(AsmJit::INST_ANDPS, vl.getOperand(), registerVar(getConstantI32(0x8000000)).getOperand());
-          break;
-        case MFUNCTION_RECIPROCAL:
-          c->emit(AsmJit::INST_RCPSS, vl.getOperand(), vl.getOperand());
+          c->emit(AsmJit::INST_ANDPD, vl.getOperand(), registerVar(getConstantI64(0x7FFFFFFFFFFFFFFF)).getOperand());
           break;
         case MFUNCTION_SQRT:
-          c->emit(AsmJit::INST_SQRTSS, vl.getOperand(), vl.getOperand());
+          c->emit(AsmJit::INST_SQRTSD, vl.getOperand(), vl.getOperand());
           break;
       }
 
@@ -472,8 +486,8 @@ JitVar JitCompiler::doCall(ASTCall* element)
         }
         else
         {
-          vars[i] = c->newXMM(AsmJit::VARIABLE_TYPE_XMM_1F);
-          c->emit(AsmJit::INST_MOVSS, vars[i], tmp.getOperand());
+          vars[i] = c->newXMM(AsmJit::VARIABLE_TYPE_XMM_1D);
+          c->emit(AsmJit::INST_MOVSD, vars[i], tmp.getOperand());
         }
       }
 
@@ -493,7 +507,7 @@ JitVar JitCompiler::doCall(ASTCall* element)
       for (i = 0; i < len; i++) ctx->setArgument((uint)i, vars[i]);
 
       // Fetch return value.
-      JitVar result(c->newXMM(AsmJit::VARIABLE_TYPE_XMM_1F), JitVar::FLAG_NONE);
+      JitVar result(c->newXMM(AsmJit::VARIABLE_TYPE_XMM_1D), JitVar::FLAG_NONE);
       ctx->setReturn(result.getXmm());
       return result;
     }
@@ -514,8 +528,8 @@ JitVar JitCompiler::doTransform(ASTTransform* element)
     case MTRANSFORM_NEGATE:
     {
       AsmJit::XMMVar t(c->newXMM());
-      c->emit(AsmJit::INST_MOVSS, t, getConstantI32(0x80000000).getOperand());
-      c->emit(AsmJit::INST_XORPS, var.getOperand(), t);
+      c->emit(AsmJit::INST_MOVSD, t, getConstantI64(0x8000000000000000).getOperand());
+      c->emit(AsmJit::INST_XORPD, var.getOperand(), t);
       break;
     }
   }
@@ -523,16 +537,7 @@ JitVar JitCompiler::doTransform(ASTTransform* element)
   return var;
 }
 
-//! @internal
-union I32FPUnion
-{
-  //! @brief 32 bit signed integer value.
-  int32_t i32;
-  //! @brief 32 bit SP-FP value.
-  float f32;
-};
-
-JitVar JitCompiler::getConstantI32(int32_t value)
+JitVar JitCompiler::getConstantI64(int64_t value)
 {
   size_t i = 0;
   size_t length = constVariables.getLength();
@@ -550,20 +555,20 @@ JitVar JitCompiler::getConstantI32(int32_t value)
     } while (++i < length);
   }
 
-  JitVar var(ptr(dataAddress, (sysint_t)i * sizeof(int32_t)), JitVar::FLAG_RO);
+  JitVar var(ptr(dataAddress, (sysint_t)i * sizeof(int64_t)), JitVar::FLAG_RO);
 
   constVariables.append(JitConst(var, value));
   dataBuffer.ensureSpace();
-  dataBuffer.emitDWord((uint32_t)value);
+  dataBuffer.emitQWord((uint64_t)value);
 
   return var;
 }
 
-JitVar JitCompiler::getConstantF32(float value)
+JitVar JitCompiler::getConstantF64(double value)
 {
-  I32FPUnion u;
-  u.f32 = value;
-  return getConstantI32(u.i32);
+  I64FPUnion u;
+  u.f64 = value;
+  return getConstantI64(u.i64);
 }
 
 MEvalFunc mpCompileFunction(WorkContext& ctx, ASTElement* tree)

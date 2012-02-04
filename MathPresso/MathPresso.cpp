@@ -94,12 +94,12 @@ static mresult_t Context_addFunction(Context* self, const char* name, void* ptr,
 // [MathPresso::Context - Environment]
 // ============================================================================
 
-static mreal_t minf(mreal_t x, mreal_t y) { return x < y ? x : y; }
-static mreal_t maxf(mreal_t x, mreal_t y) { return x > y ? x : y; }
-static mreal_t avgf(mreal_t x, mreal_t y) { return (x + y) * 0.5f; }
+static mreal_t min(mreal_t x, mreal_t y) { return x < y ? x : y; }
+static mreal_t max(mreal_t x, mreal_t y) { return x > y ? x : y; }
+static mreal_t avg(mreal_t x, mreal_t y) { return (x + y) * 0.5f; }
 
-static mreal_t roundf(mreal_t x) { return (mreal_t)( (int)((x < 0.0f) ? x - 0.5f : x + 0.5f) ); }
-static mreal_t recipf(mreal_t x) { return 1.0f/x; }
+static mreal_t round(mreal_t x) { return (mreal_t)( (int)((x < 0.0f) ? x - 0.5f : x + 0.5f) ); }
+static mreal_t recip(mreal_t x) { return 1.0f/x; }
 
 #define MP_ADD_CONST(self, name, value) \
   do { \
@@ -120,36 +120,36 @@ static mresult_t Context_addEnvironment_Math(Context* self)
   MP_ADD_CONST(self, "PI", 3.14159265358979323846);
 
   // Functions.
-  MP_ADD_FUNCTION(self, "min"       , minf   , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_MIN);
-  MP_ADD_FUNCTION(self, "max"       , maxf   , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_MAX);
-  MP_ADD_FUNCTION(self, "avg"       , avgf   , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_AVG);
+  MP_ADD_FUNCTION(self, "min"       , min   , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_MIN);
+  MP_ADD_FUNCTION(self, "max"       , max   , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_MAX);
+  MP_ADD_FUNCTION(self, "avg"       , avg   , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_AVG);
 
-  MP_ADD_FUNCTION(self, "ceil"      , ceilf  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_CEIL);
-  MP_ADD_FUNCTION(self, "floor"     , floorf , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_FLOOR);
-  MP_ADD_FUNCTION(self, "round"     , roundf , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ROUND);
+  MP_ADD_FUNCTION(self, "ceil"      , ceil  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_CEIL);
+  MP_ADD_FUNCTION(self, "floor"     , floor , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_FLOOR);
+  MP_ADD_FUNCTION(self, "round"     , round , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ROUND);
 
-  MP_ADD_FUNCTION(self, "abs"       , fabsf  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ABS);
+  MP_ADD_FUNCTION(self, "abs"       , fabs  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ABS);
 
-  MP_ADD_FUNCTION(self, "reciprocal", recipf , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_RECIPROCAL);
+  MP_ADD_FUNCTION(self, "reciprocal", recip , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_RECIPROCAL);
 
-  MP_ADD_FUNCTION(self, "sqrt"      , sqrtf  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_SQRT);
-  MP_ADD_FUNCTION(self, "pow"       , powf   , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_POW);
+  MP_ADD_FUNCTION(self, "sqrt"      , sqrt  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_SQRT);
+  MP_ADD_FUNCTION(self, "pow"       , pow   , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_POW);
 
-  MP_ADD_FUNCTION(self, "log"       , logf   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_LOG);
-  MP_ADD_FUNCTION(self, "log10"     , log10f , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_LOG10);
+  MP_ADD_FUNCTION(self, "log"       , log   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_LOG);
+  MP_ADD_FUNCTION(self, "log10"     , log10 , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_LOG10);
 
-  MP_ADD_FUNCTION(self, "sin"       , sinf   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_SIN);
-  MP_ADD_FUNCTION(self, "cos"       , cosf   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_COS);
+  MP_ADD_FUNCTION(self, "sin"       , sin   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_SIN);
+  MP_ADD_FUNCTION(self, "cos"       , cos   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_COS);
   MP_ADD_FUNCTION(self, "tan"       , tanf   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_TAN);
 
-  MP_ADD_FUNCTION(self, "sinh"      , sinhf  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_SINH);
-  MP_ADD_FUNCTION(self, "cosh"      , coshf  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_COSH);
-  MP_ADD_FUNCTION(self, "tanh"      , tanhf  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_TANH);
+  MP_ADD_FUNCTION(self, "sinh"      , sinh  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_SINH);
+  MP_ADD_FUNCTION(self, "cosh"      , cosh  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_COSH);
+  MP_ADD_FUNCTION(self, "tanh"      , tanh  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_TANH);
 
-  MP_ADD_FUNCTION(self, "asin"      , asinf  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ASIN);
-  MP_ADD_FUNCTION(self, "acos"      , acosf  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ACOS);
-  MP_ADD_FUNCTION(self, "atan"      , atanf  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ATAN);
-  MP_ADD_FUNCTION(self, "atan2"     , atan2f , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_ATAN2);
+  MP_ADD_FUNCTION(self, "asin"      , asin  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ASIN);
+  MP_ADD_FUNCTION(self, "acos"      , acos  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ACOS);
+  MP_ADD_FUNCTION(self, "atan"      , atan  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ATAN);
+  MP_ADD_FUNCTION(self, "atan2"     , atan2 , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_ATAN2);
 
   return MRESULT_OK;
 }
