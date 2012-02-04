@@ -444,7 +444,7 @@ JitVar JitCompiler::doCall(ASTCall* element)
       switch (funcId)
       {
         case MFUNCTION_ABS:
-          c->emit(AsmJit::INST_ANDPS, vl.getOperand(), registerVar(getConstantI32(0x8000000)).getOperand());
+          c->emit(AsmJit::INST_ANDPS, vl.getOperand(), registerVar(getConstantI32(0x7FFFFFFF)).getOperand());
           break;
         case MFUNCTION_RECIPROCAL:
           c->emit(AsmJit::INST_RCPSS, vl.getOperand(), vl.getOperand());
