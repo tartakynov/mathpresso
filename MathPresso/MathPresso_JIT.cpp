@@ -568,7 +568,7 @@ JitVar JitCompiler::getConstantF32(float value)
 
 MEvalFunc mpCompileFunction(WorkContext& ctx, ASTElement* tree)
 {
-  bool enableLogger = true;
+  bool enableLogger = false;
   AsmJit::Compiler c;
 
   JitLogger logger;
