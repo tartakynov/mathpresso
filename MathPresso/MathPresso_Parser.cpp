@@ -242,14 +242,11 @@ mresult_t ExpressionParser::parseExpression(ASTElement** dst,
           }
         }
 
-        if ((op == MOPERATOR_NONE && left == NULL) ||
-            (op == MOPERATOR_ASSIGN))
+        if (op == MOPERATOR_NONE && left == NULL)
         {
           om = token.operatorType;
-          if (om == MOPERATOR_PLUS || om == MOPERATOR_MINUS)
-          {
-            continue;
-          }
+          if (om == MOPERATOR_PLUS || om == MOPERATOR_MINUS) continue;
+
           result = MRESULT_UNEXPECTED_TOKEN;
           goto failure;
         }
