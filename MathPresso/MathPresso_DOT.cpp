@@ -99,7 +99,7 @@ void DotBuilder::doElement(ASTElement* element)
 
 void DotBuilder::doBlock(ASTBlock* element)
 {
-  Vector<ASTElement*>& children = element->_elements;
+  Vector<ASTElement*>& children = element->getChildrenVector();
   size_t i, len = children.getLength();
 
   _sb.appendFormat("  N_%u [label=\"", element->getElementId());

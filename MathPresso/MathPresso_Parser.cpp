@@ -106,7 +106,7 @@ finished:
   else
   {
     ASTBlock* block = new ASTBlock(_ctx.genId());
-    block->_elements.swap(elements);
+    block->getChildrenVector().swap(elements);
 
     *dst = block;
     return MRESULT_OK;

@@ -132,8 +132,17 @@ enum MVARIABLE_TYPE
 // [MathPresso::ASTElement]
 // ============================================================================
 
-struct MATHPRESSO_HIDDEN ASTElement
+class MATHPRESSO_HIDDEN ASTElement
 {
+protected:
+  //! @brief Parent element.
+  ASTElement* _parent;
+  //! @brief Element type.
+  uint _elementType;
+  //! @brief Element id, unique per @ref Expression.
+  uint _elementId;
+
+public:
   ASTElement(uint elementId, uint elementType);
   virtual ~ASTElement() = 0;
 
@@ -155,58 +164,42 @@ struct MATHPRESSO_HIDDEN ASTElement
   virtual mreal_t evaluate(void* data) const = 0;
 
   //! @brief Get the parent element.
-  inline ASTElement* getParent() const { return _parent; }
+  inline ASTElement* & getParent() { return _parent; }
 
   //! @brief Get the element type.
   inline uint getElementId() const { return _elementId; }
 
   //! @brief Get the element type.
   inline uint getElementType() const { return _elementType; }
-
-  //! @brief Parent element.
-  ASTElement* _parent;
-  //! @brief Element type.
-  uint _elementType;
-  //! @brief Element id, unique per @ref Expression.
-  uint _elementId;
 };
 
 // ============================================================================
 // [MathPresso::ASTBlock]
 // ============================================================================
 
-struct MATHPRESSO_HIDDEN ASTBlock : public ASTElement
+class MATHPRESSO_HIDDEN ASTBlock : public ASTElement
 {
+protected:
+  Vector<ASTElement*> _elements;
+
+public:
   ASTBlock(uint elementId);
   virtual ~ASTBlock();
 
   virtual bool isConstant() const;
   virtual ASTElement** getChildrenElements() const;
+  virtual Vector<ASTElement *> & getChildrenVector();
   virtual size_t getChildrenCount() const;
   virtual mreal_t evaluate(void* data) const;
-
-  Vector<ASTElement*> _elements;
 };
 
 // ============================================================================
 // [MathPresso::ASTNode]
 // ============================================================================
 
-struct MATHPRESSO_HIDDEN ASTNode : public ASTElement
+class MATHPRESSO_HIDDEN ASTNode : public ASTElement
 {
-  ASTNode(uint elementId, uint elementType);
-  virtual ~ASTNode();
-
-  virtual bool isConstant() const;
-  virtual ASTElement** getChildrenElements() const;
-  virtual size_t getChildrenCount() const;
-
-  inline ASTElement* getLeft() const { return _left; }
-  inline ASTElement* getRight() const { return _right; }
-
-  inline void setLeft(ASTElement* element) { _left = element; element->_parent = this; }
-  inline void setRight(ASTElement* element) { _right = element; element->_parent = this; }
-
+protected:
   union
   {
     struct
@@ -219,14 +212,32 @@ struct MATHPRESSO_HIDDEN ASTNode : public ASTElement
       ASTElement* _elements[2];
     };
   };
+
+public:
+  ASTNode(uint elementId, uint elementType);
+  virtual ~ASTNode();
+
+  virtual bool isConstant() const;
+  virtual ASTElement** getChildrenElements() const;
+  virtual size_t getChildrenCount() const;
+
+  inline ASTElement* getLeft() const { return _left; }
+  inline ASTElement* getRight() const { return _right; }
+
+  inline void setLeft(ASTElement* element) { _left = element; element->getParent() = this; }
+  inline void setRight(ASTElement* element) { _right = element; element->getParent() = this; }
 };
 
 // ============================================================================
 // [MathPresso::ASTConstant]
 // ============================================================================
 
-struct MATHPRESSO_HIDDEN ASTConstant : public ASTElement
+class MATHPRESSO_HIDDEN ASTConstant : public ASTElement
 {
+protected:
+  mreal_t _value;
+
+public:
   ASTConstant(uint elementId, mreal_t val);
   virtual ~ASTConstant();
 
@@ -238,16 +249,18 @@ struct MATHPRESSO_HIDDEN ASTConstant : public ASTElement
 
   inline mreal_t getValue() const { return _value; }
   inline void setValue(mreal_t value) { _value = value; }
-
-  mreal_t _value;
 };
 
 // ============================================================================
 // [MathPresso::ASTVariable]
 // ============================================================================
 
-struct MATHPRESSO_HIDDEN ASTVariable : public ASTElement
+class MATHPRESSO_HIDDEN ASTVariable : public ASTElement
 {
+protected:
+  const Variable* _variable;
+
+public:
   ASTVariable(uint elementId, const Variable* variable);
   virtual ~ASTVariable();
 
@@ -259,16 +272,19 @@ struct MATHPRESSO_HIDDEN ASTVariable : public ASTElement
 
   inline const Variable* getVariable() const { return _variable; }
   inline int getOffset() const { return _variable->v.offset; }
-
-  const Variable* _variable;
 };
 
 // ============================================================================
 // [MathPresso::ASTOperator]
 // ============================================================================
 
-struct MATHPRESSO_HIDDEN ASTOperator : public ASTNode
+class MATHPRESSO_HIDDEN ASTOperator : public ASTNode
 {
+protected:
+  uint _operatorType;
+
+public:
+
   ASTOperator(uint elementId, uint operatorType);
   virtual ~ASTOperator();
 
@@ -277,16 +293,19 @@ struct MATHPRESSO_HIDDEN ASTOperator : public ASTNode
   inline uint getOperatorType() const { return _operatorType; }
   inline void setOperatorType(int value) { _operatorType = value; }
 
-protected:
-  uint _operatorType;
 };
 
 // ============================================================================
 // [MathPresso::ASTCall]
 // ============================================================================
 
-struct MATHPRESSO_HIDDEN ASTCall : public ASTElement
+class MATHPRESSO_HIDDEN ASTCall : public ASTElement
 {
+protected:
+  Function* _function;
+  Vector<ASTElement*> _arguments;
+
+public:
   ASTCall(uint elementId, Function* function);
   virtual ~ASTCall();
 
@@ -301,18 +320,19 @@ struct MATHPRESSO_HIDDEN ASTCall : public ASTElement
   inline const Vector<ASTElement*>& getArguments() const { return _arguments; }
 
   inline bool swapArguments(Vector<ASTElement*>& other) { return _arguments.swap(other); }
-
-protected:
-  Function* _function;
-  Vector<ASTElement*> _arguments;
 };
 
 // ============================================================================
 // [MathPresso::ASTTransform]
 // ============================================================================
 
-struct MATHPRESSO_HIDDEN ASTTransform : public ASTElement
+class MATHPRESSO_HIDDEN ASTTransform : public ASTElement
 {
+protected:
+  ASTElement* _child;
+  uint _transformType;
+
+public:
   ASTTransform(uint elementId);
   virtual ~ASTTransform();
 
@@ -322,13 +342,10 @@ struct MATHPRESSO_HIDDEN ASTTransform : public ASTElement
   virtual mreal_t evaluate(void* data) const;
 
   inline ASTElement* getChild() const { return _child; }
-  inline void setChild(ASTElement* element) { _child = element; element->_parent = this; }
+  inline virtual void setChild(ASTElement* element) { _child = element; element->getParent() = this; }
 
   inline uint getTransformType() const { return _transformType; }
   inline void setTransformType(uint transformType) { _transformType = transformType; }
-
-  ASTElement* _child;
-  uint _transformType;
 };
 
 } // MathPresso namespace

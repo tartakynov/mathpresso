@@ -45,10 +45,6 @@ ASTElement::~ASTElement()
 {
 }
 
-bool ASTElement::isConstant() const
-{
-  return false;
-}
 
 bool ASTElement::replaceChild(ASTElement* child, ASTElement* element)
 {
@@ -84,6 +80,11 @@ bool ASTBlock::isConstant() const
 ASTElement** ASTBlock::getChildrenElements() const
 {
   return const_cast<ASTElement**>(_elements.getData());
+}
+
+Vector<ASTElement *> & ASTBlock::getChildrenVector()
+{
+  return _elements;
 }
 
 size_t ASTBlock::getChildrenCount() const
@@ -127,6 +128,7 @@ ASTElement** ASTNode::getChildrenElements() const
 {
   return const_cast<ASTElement**>(_elements);
 }
+
 
 size_t ASTNode::getChildrenCount() const
 {

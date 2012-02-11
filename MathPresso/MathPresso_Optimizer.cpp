@@ -75,7 +75,7 @@ ASTElement* Optimizer::doOperator(ASTOperator* element)
     mreal_t result = element->evaluate(NULL);
 
     ASTConstant* replacement = new ASTConstant(_ctx.genId(), result);
-    replacement->_parent = element->getParent();
+    replacement->getParent() = element->getParent();
     delete element;
     return replacement;
   }

@@ -319,11 +319,11 @@ JitVar JitCompiler::doElement(ASTElement* element)
 JitVar JitCompiler::doBlock(ASTBlock* element)
 {
   JitVar result;
-
-  size_t i, len = element->_elements.getLength();
+  Vector<ASTElement *> & elements = element->getChildrenVector();
+  size_t i, len = elements.getLength();
   for (i = 0; i < len; i++)
   {
-    result = doElement(element->_elements[i]);
+    result = doElement(elements[i]);
   }
 
   return result;
