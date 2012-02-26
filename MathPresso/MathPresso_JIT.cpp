@@ -182,6 +182,7 @@ struct MATHPRESSO_HIDDEN JitCompiler
   JitVar doOperator(ASTOperator* element);
   JitVar doCall(ASTCall* element);
   JitVar doTransform(ASTTransform* element);
+  JitVar callCustom(void *ptr, ASTElement* const *arguments, uint len);
 
   // Constants.
 
@@ -339,6 +340,48 @@ JitVar JitCompiler::doVariable(ASTVariable* element)
   return JitVar(ptr(variablesAddress, (sysint_t)element->getOffset()), JitVar::FLAG_RO);
 }
 
+JitVar JitCompiler::callCustom(void *ptr, ASTElement* const *arguments, uint len)
+{
+  MP_ASSERT(len <= 8);
+
+  AsmJit::XMMVar vars[8];
+
+  for (uint i = 0; i < len; i++)
+  {
+    JitVar tmp = doElement(arguments[i]);
+
+    if (tmp.isXmm())
+    {
+      vars[i] = tmp.getXmm();
+    }
+    else
+    {
+      vars[i] = c->newXMM(AsmJit::VARIABLE_TYPE_XMM_1D);
+      c->emit(AsmJit::INST_MOVSD, vars[i], tmp.getOperand());
+    }
+  }
+
+  // Use function builder to build a function prototype.
+  AsmJit::FunctionBuilderX builder;
+  for (uint i = 0; i < len; i++)
+  {
+    builder.addArgument<mreal_t>();
+  }
+  builder.setReturnValue<mreal_t>();
+
+  // Create ECall emittable (function call context).
+  AsmJit::ECall* ctx = c->call(ptr);
+  ctx->setPrototype(AsmJit::CALL_CONV_DEFAULT, builder);
+
+  // Assign arguments.
+  for (uint i = 0; i < len; i++) ctx->setArgument((uint)i, vars[i]);
+
+  // Fetch return value.
+  JitVar result(c->newXMM(AsmJit::VARIABLE_TYPE_XMM_1D), JitVar::FLAG_NONE);
+  ctx->setReturn(result.getXmm());
+  return result;
+}
+
 JitVar JitCompiler::doOperator(ASTOperator* element)
 {
   uint operatorType = element->getOperatorType();
@@ -356,6 +399,16 @@ JitVar JitCompiler::doOperator(ASTOperator* element)
     vr = registerVar(doElement(right));
     c->emit(AsmJit::INST_MOVSD, ptr(variablesAddress, (sysint_t)varNode->getOffset()), vr.getOperand());
     return vr;
+  }
+  if (operatorType == MOPERATOR_POW)
+  {
+    ASTElement *arguments[2] = { left, right };
+    return callCustom((void *)pow, arguments, 2);
+  }
+  if (operatorType == MOPERATOR_MOD)
+  {
+    ASTElement *arguments[2] = { left, right };
+    return callCustom((void *)fmod, arguments, 2);
   }
 
   if (left->getElementType() == MELEMENT_VARIABLE && right->getElementType() == MELEMENT_VARIABLE &&
@@ -403,8 +456,6 @@ JitVar JitCompiler::doOperator(ASTOperator* element)
       c->emit(AsmJit::INST_DIVSD, vl.getOperand(), vr.getOperand());
       return vl;
     // case MOPERATOR_MOD:
-    // TODO: Modulo.
-    //  return vl;
     default:
       MP_ASSERT_NOT_REACHED();
       return vl;
@@ -473,44 +524,7 @@ JitVar JitCompiler::doCall(ASTCall* element)
 
     // Function call.
     default:
-    {
-      AsmJit::XMMVar vars[8];
-
-      for (i = 0; i < len; i++)
-      {
-        JitVar tmp = doElement(arguments[i]);
-
-        if (tmp.isXmm())
-        {
-          vars[i] = tmp.getXmm();
-        }
-        else
-        {
-          vars[i] = c->newXMM(AsmJit::VARIABLE_TYPE_XMM_1D);
-          c->emit(AsmJit::INST_MOVSD, vars[i], tmp.getOperand());
-        }
-      }
-
-      // Use function builder to build a function prototype.
-      AsmJit::FunctionBuilderX builder;
-      for (i = 0; i < len; i++)
-	  {
-        builder.addArgument<mreal_t>();
-      }
-      builder.setReturnValue<mreal_t>();
-
-      // Create ECall emittable (function call context).
-      AsmJit::ECall* ctx = c->call(element->getFunction()->getPtr());
-      ctx->setPrototype(AsmJit::CALL_CONV_DEFAULT, builder);
-
-      // Assign arguments.
-      for (i = 0; i < len; i++) ctx->setArgument((uint)i, vars[i]);
-
-      // Fetch return value.
-      JitVar result(c->newXMM(AsmJit::VARIABLE_TYPE_XMM_1D), JitVar::FLAG_NONE);
-      ctx->setReturn(result.getXmm());
-      return result;
-    }
+      return callCustom(element->getFunction()->getPtr(), arguments.getData(), len);
   }
 }
 
