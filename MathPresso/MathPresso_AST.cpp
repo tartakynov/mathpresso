@@ -260,6 +260,13 @@ mreal_t ASTOperator::evaluate(void* data) const
       result = fmod(vl, vr);
       break;
     }
+    case MOPERATOR_POW:
+    {
+      mreal_t vl = _left->evaluate(data);
+      mreal_t vr = _right->evaluate(data);
+      result = pow(vl, vr);
+      break;
+    }
   }
 
   return result;

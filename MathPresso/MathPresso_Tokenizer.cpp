@@ -140,6 +140,7 @@ uint Tokenizer::next(Token* dst)
       case '*': dst->tokenType = MTOKEN_OPERATOR; dst->operatorType = MOPERATOR_MUL; break;
       case '/': dst->tokenType = MTOKEN_OPERATOR; dst->operatorType = MOPERATOR_DIV; break;
       case '%': dst->tokenType = MTOKEN_OPERATOR; dst->operatorType = MOPERATOR_MOD; break;
+      case '^': dst->tokenType = MTOKEN_OPERATOR; dst->operatorType = MOPERATOR_POW; break;
       default : dst->tokenType = MTOKEN_ERROR; break;
     }
 

@@ -60,7 +60,8 @@ enum MOPERATOR_TYPE
   MOPERATOR_MINUS,
   MOPERATOR_MUL,
   MOPERATOR_DIV,
-  MOPERATOR_MOD
+  MOPERATOR_MOD,
+  MOPERATOR_POW
 };
 
 //! @internal
@@ -292,7 +293,6 @@ public:
 
   inline uint getOperatorType() const { return _operatorType; }
   inline void setOperatorType(int value) { _operatorType = value; }
-
 };
 
 // ============================================================================

@@ -147,6 +147,7 @@ void DotBuilder::doOperator(ASTOperator* element)
     case MOPERATOR_MUL   : opString = "*"; break;
     case MOPERATOR_DIV   : opString = "/"; break;
     case MOPERATOR_MOD   : opString = "%"; break;
+    case MOPERATOR_POW   : opString = "^"; break;
     default:
       MP_ASSERT_NOT_REACHED();
   }
