@@ -47,7 +47,8 @@ static const int mpOperatorPriority[] =
   10, // MOPERATOR_MINUS
   15, // MOPERATOR_MUL
   15, // MOPERATOR_DIV
-  15  // MOPERATOR_MOD
+  15, // MOPERATOR_MOD
+  20  // MOPERATOR_POW
 };
 
 ExpressionParser::ExpressionParser(WorkContext& ctx, const char* input, size_t length) :
