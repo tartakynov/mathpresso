@@ -26,4 +26,4 @@ Contact
 =======
 
 Author: Petr Kobalicek <kobalicek.petr@gmail.com>
-Maintainer: Artem Tartakynov <artem@tartakynov.ru>
+Maintainer: Artem Tartakynov <artem.tad@gmail.com>
