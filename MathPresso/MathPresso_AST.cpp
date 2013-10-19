@@ -53,7 +53,11 @@ bool ASTElement::replaceChild(ASTElement* child, ASTElement* element)
 
   for (size_t i = 0; i < length; i++)
   {
-    if (children[i] == child) { children[i] = element; return true; }
+    if (children[i] == child) {
+      children[i] = element;
+	  element->getParent() = this;
+      return true;
+    }
   }
 
   return false;
@@ -69,7 +73,8 @@ ASTBlock::ASTBlock(uint elementId) : ASTElement(elementId, MELEMENT_BLOCK)
 
 ASTBlock::~ASTBlock()
 {
-  for (size_t i = 0; i < _elements.getLength(); i++) delete _elements[i];
+  for (size_t i = 0; i < _elements.getLength(); i++)
+    delete _elements[i];
 }
 
 bool ASTBlock::isConstant() const
@@ -100,6 +105,17 @@ mreal_t ASTBlock::evaluate(void* data) const
     result = _elements[i]->evaluate(data);
   }
   return result;
+}
+
+std::string ASTBlock::toString() const
+{
+  std::string str = "{ ";
+  for (size_t i = 0; i < _elements.getLength(); i++)
+  {
+    if (i != 0) str += " ; ";
+    str += _elements[i]->toString();
+  }
+  return str + " }";
 }
 
 // ============================================================================
@@ -133,6 +149,12 @@ ASTElement** ASTNode::getChildrenElements() const
 size_t ASTNode::getChildrenCount() const
 {
   return 2;
+}
+
+std::string ASTNode::toString() const
+{
+  MP_ASSERT_NOT_REACHED();
+  return _left->toString() + ' ' + _right->toString();
 }
 
 // ============================================================================
@@ -174,6 +196,11 @@ mreal_t ASTConstant::evaluate(void* data) const
   return _value;
 }
 
+std::string ASTConstant::toString() const
+{
+	return std::to_string(_value);
+}
+
 // ============================================================================
 // [MathPresso::ASTVariable]
 // ============================================================================
@@ -211,6 +238,11 @@ bool ASTVariable::replaceChild(ASTElement* child, ASTElement* element)
 mreal_t ASTVariable::evaluate(void* data) const
 {
   return reinterpret_cast<mreal_t*>((char*)data + getOffset())[0];
+}
+
+std::string ASTVariable::toString() const
+{
+	return Hash<Variable>::dataToKey(getVariable());
 }
 
 // ============================================================================
@@ -267,9 +299,55 @@ mreal_t ASTOperator::evaluate(void* data) const
       result = pow(vl, vr);
       break;
     }
+	default:
+      MP_ASSERT_NOT_REACHED();
   }
 
   return result;
+}
+
+bool ASTOperator::replaceChild(ASTElement* child, ASTElement* element)
+{
+  if (child == _left)
+  {
+    _left = element;
+    if (element) element->getParent() = this;
+    return true;
+  }
+  if (child == _right)
+  {
+    _right = element;
+    if (element) element->getParent() = this;
+    return true;
+  }
+  return false;
+}
+
+std::string ASTOperator::toString() const
+{
+  char c;
+  switch (getOperatorType())
+  {
+    case MOPERATOR_ASSIGN:
+      c='='; break;
+    case MOPERATOR_PLUS:
+      c='+'; break;
+    case MOPERATOR_MINUS:
+      c='-'; break;
+    case MOPERATOR_MUL:
+      c='*'; break;
+    case MOPERATOR_DIV:
+      c='/'; break;
+    case MOPERATOR_MOD:
+      c='%'; break;
+    case MOPERATOR_POW:
+      c='^'; break;
+	default:
+      MP_ASSERT_NOT_REACHED();
+      c='?';
+  }
+
+  return _left->toString() + ' ' + _right->toString() + ' ' + c;
 }
 
 // ============================================================================
@@ -322,7 +400,7 @@ mreal_t ASTCall::evaluate(void* data) const
   }
 
   void* fn = getFunction()->getPtr();
-  MP_ASSERT(getFunction()->getArguments() == len);
+  MP_ASSERT(getFunction()->getArgumentsCount() == len);
 
   switch (len)
   {
@@ -338,6 +416,19 @@ mreal_t ASTCall::evaluate(void* data) const
   }
 
   return result;
+}
+
+std::string ASTCall::toString() const
+{
+  std::string str = Hash<Function>::dataToKey(getFunction());
+  str += "(";
+  for (size_t i = 0; i < _arguments.getLength(); i++)
+  {
+    if (i != 0) str += " , ";
+    str += _arguments[i]->toString();
+  }
+  str += ")";
+  return str;
 }
 
 // ============================================================================
@@ -371,6 +462,16 @@ size_t ASTTransform::getChildrenCount() const
   return 1;
 }
 
+bool ASTTransform::replaceChild(ASTElement* child, ASTElement* element)
+{
+  if (child != _child)
+    return false;
+  _child = element;
+  if (_child)
+    _child->getParent() = this;
+  return true;
+}
+
 mreal_t ASTTransform::evaluate(void* data) const
 {
   mreal_t value = getChild()->evaluate(data);
@@ -384,6 +485,20 @@ mreal_t ASTTransform::evaluate(void* data) const
     default:
       MP_ASSERT_NOT_REACHED();
       return 0.0f;
+  }
+}
+
+std::string ASTTransform::toString() const
+{
+  switch (getTransformType())
+  {
+    case MTRANSFORM_NONE:
+      return getChild()->toString() + std::string(" dummy transform");
+    case MTRANSFORM_NEGATE:
+      return getChild()->toString() + std::string(" negation");
+    default:
+      MP_ASSERT_NOT_REACHED();
+      return std::string(" unknown transform");
   }
 }
 
