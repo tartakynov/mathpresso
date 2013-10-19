@@ -32,7 +32,7 @@
 
 namespace MathPresso {
 
-MATHPRESSO_HIDDEN MEvalFunc mpCompileFunction(WorkContext& ctx, ASTElement* tree);
+MATHPRESSO_HIDDEN MEvalFunc mpCompileFunction(WorkContext& ctx, ASTElement* tree, char** logOutput = NULL);
 MATHPRESSO_HIDDEN void mpFreeFunction(void* fn);
 
 } // MathPresso namespace
