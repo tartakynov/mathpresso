@@ -66,10 +66,19 @@ private: \
 //! @internal
 //!
 //! MathPresso assertion handler.
-MATHPRESSO_HIDDEN void mpAssertionFailure(const char* expression, int line);
+MATHPRESSO_HIDDEN void mpAssertionFailure(const char* expression, const char* srcfile, int line);
 
-#define MP_ASSERT(exp) do { if (!(exp)) ::MathPresso::mpAssertionFailure(#exp, __LINE__); } while (0)
-#define MP_ASSERT_NOT_REACHED() do { ::MathPresso::mpAssertionFailure("Not reached", __LINE__); } while (0)
+#ifndef NDEBUG
+
+#define MP_ASSERT(exp) do { if (!(exp)) ::MathPresso::mpAssertionFailure(#exp, __FILE__, __LINE__); } while (0)
+#define MP_ASSERT_NOT_REACHED() do { ::MathPresso::mpAssertionFailure("Should not be here", __FILE__, __LINE__); } while (0)
+
+#else
+
+#define MP_ASSERT(exp)
+#define MP_ASSERT_NOT_REACHED()
+
+#endif
 
 // ============================================================================
 // [MathPresso::Atomic]
@@ -524,6 +533,9 @@ void Hash<T>::clear()
 
   _grow = 1;
   _shrink = 0;
+
+  if (_data != _embedded)
+    ::free(_data);
 
   _data = _embedded;
   _data[0] = NULL;

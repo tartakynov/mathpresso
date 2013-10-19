@@ -33,9 +33,9 @@ namespace MathPresso {
 // [MathPresso::Assert]
 // ============================================================================
 
-void mpAssertionFailure(const char* expression, int line)
+void mpAssertionFailure(const char* expression, const char* srcfile, int line)
 {
-  fprintf(stderr, "*** ASSERTION FAILURE: MathPresso.cpp (line %d)\n", line);
+  fprintf(stderr, "*** ASSERTION FAILURE: %s (line %d)\n", srcfile, line);
   fprintf(stderr, "*** REASON: %s\n", expression);
   exit(0);
 }
@@ -49,7 +49,7 @@ MATHPRESSO_HIDDEN mreal_t mpConvertToFloat(const char* str, size_t length, bool*
   double result = 0.0;
   const char* end = str + length;
 
-  // Integer portion.
+  // Integer part
   while (str != end && mpIsDigit(*str))
   {
     result *= 10;
@@ -57,7 +57,7 @@ MATHPRESSO_HIDDEN mreal_t mpConvertToFloat(const char* str, size_t length, bool*
     str++;
   }
 
-  // Fraction.
+  // Fractional part
   if (str != end && *str == '.')
   {
     str++;
@@ -70,6 +70,27 @@ MATHPRESSO_HIDDEN mreal_t mpConvertToFloat(const char* str, size_t length, bool*
     }
   }
 
+  // Exponent
+  if (str != end && (*str == 'E' || *str == 'e')) {
+    if (++str == end) goto error;
+    double sign;
+    if (*str == '+') sign = 1;
+    else if (*str == '-') sign = -1;
+    else {
+error:
+      *ok = false;
+      return (mreal_t)result;
+    }
+    if (++str == end) goto error;
+    double E = 0;
+    while (str != end && mpIsDigit(*str))
+    {
+      E *= 10;
+      E += (double)(*str - '0');
+      str++;
+    }
+    result = result * pow(10, sign*E);
+  }
   *ok = (str == end);
   return (mreal_t)result;
 }
@@ -143,7 +164,7 @@ StringBuilder& StringBuilder::appendFormat(const char* fmt, ...)
 
   va_list ap;
   va_start(ap, fmt);
-  len = vsnprintf(buf, 1024, fmt, ap);
+  len = vsnprintf_s(buf, 1024, fmt, ap);
   va_end(ap);
 
   return appendString(buf, len);
