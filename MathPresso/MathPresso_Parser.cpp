@@ -37,18 +37,34 @@ namespace MathPresso {
 // ============================================================================
 
 //! @internal
-//!
-//! @brief Operator priority.
-static const int mpOperatorPriority[] =
+
+//! @brief Operator associativity
+enum OperatorAssoc
 {
-  0 , // MOPERATOR_NONE
-  5 , // MOPERATOR_ASSIGN
-  10, // MOPERATOR_PLUS
-  10, // MOPERATOR_MINUS
-  15, // MOPERATOR_MUL
-  15, // MOPERATOR_DIV
-  15, // MOPERATOR_MOD
-  20  // MOPERATOR_POW
+  NoAssoc,
+  LeftAssoc,
+  RightAssoc
+};
+
+//! @brief Struct for operator priority and associativity
+struct OperatorInfo
+{
+  int priority;
+  OperatorAssoc assoc;
+};
+
+//! @brief Operator info table
+static const OperatorInfo mpOperatorInfo[] =
+{
+  { 0,  LeftAssoc  }, // MOPERATOR_NONE
+  { 5,  RightAssoc }, // MOPERATOR_ASSIGN
+  { 10, LeftAssoc  }, // MOPERATOR_PLUS
+  { 10, LeftAssoc  }, // MOPERATOR_MINUS
+  { 15, LeftAssoc  }, // MOPERATOR_MUL
+  { 15, LeftAssoc  }, // MOPERATOR_DIV
+  { 15, LeftAssoc  }, // MOPERATOR_MOD
+  { 20, RightAssoc }, // MOPERATOR_POW
+  { 25, RightAssoc }  // MOPERATOR_UMINUS
 };
 
 ExpressionParser::ExpressionParser(WorkContext& ctx, const char* input, size_t length) :
@@ -88,7 +104,7 @@ mresult_t ExpressionParser::parseTree(ASTElement** dst)
         result = MRESULT_UNEXPECTED_TOKEN;
         goto failed;
       case MTOKEN_SEMICOLON:
-        // Skip semicolon and parse another expression.
+        // Skip semicolon and parse next expression
         _tokenizer.next(&_last);
         break;
     }
@@ -128,7 +144,6 @@ mresult_t ExpressionParser::parseExpression(ASTElement** dst,
 
   mresult_t result = MRESULT_OK;
   uint op = MOPERATOR_NONE;
-  uint om = MOPERATOR_NONE;
 
   Token& token = _last;
   Token helper;
@@ -162,8 +177,8 @@ mresult_t ExpressionParser::parseExpression(ASTElement** dst,
       case MTOKEN_END_OF_INPUT:
         if (op != MOPERATOR_NONE)
         {
-          // Expecting expression.
-          result = MRESULT_EXPECTED_EXPRESSION;
+          // Operand expected
+          result = MRESULT_EXPRESSION_EXPECTED;
           goto failure;
         }
 
@@ -175,16 +190,29 @@ mresult_t ExpressionParser::parseExpression(ASTElement** dst,
       // ----------------------------------------------------------------------
       case MTOKEN_INTEGER:
       case MTOKEN_FLOAT:
-        right = new ASTConstant(_ctx.genId(),
-          om == MOPERATOR_MINUS ? -token.f : token.f);
-        om = MOPERATOR_NONE;
+        if (left != NULL && op == MOPERATOR_NONE)
+        {
+          // Expected operator or end of expression
+          result = MRESULT_UNEXPECTED_TOKEN;
+          goto failure;
+        }
+
+        right = new ASTConstant(_ctx.genId(), token.f);
         break;
       // ----------------------------------------------------------------------
 
       // ----------------------------------------------------------------------
       case MTOKEN_LPAREN:
+        if (left != NULL && op == MOPERATOR_NONE)
+        {
+          // Expected operator or end of expression
+          result = MRESULT_UNEXPECTED_TOKEN;
+          goto failure;
+        }
+
         result = parseExpression(&right, NULL, 0, true);
-        if (result != MRESULT_OK) goto failure;
+        if (result != MRESULT_OK)
+          goto failure;
 
         _tokenizer.next(&token);
         if (token.tokenType != MTOKEN_RPAREN)
@@ -193,22 +221,12 @@ mresult_t ExpressionParser::parseExpression(ASTElement** dst,
           goto failure;
         }
 
-        if (om == MOPERATOR_MINUS)
-        {
-          ASTTransform* transform = new ASTTransform(_ctx.genId());
-          transform->setTransformType(MTRANSFORM_NEGATE);
-          transform->setChild(right);
-          right = transform;
-        }
-
-        om = MOPERATOR_NONE;
         break;
       // ----------------------------------------------------------------------
 
       // ----------------------------------------------------------------------
       case MTOKEN_RPAREN:
-        if (op != MOPERATOR_NONE ||
-            om != MOPERATOR_NONE)
+        if (op != MOPERATOR_NONE)
         {
           result = MRESULT_UNEXPECTED_TOKEN;
           goto failure;
@@ -229,13 +247,16 @@ mresult_t ExpressionParser::parseExpression(ASTElement** dst,
       case MTOKEN_OPERATOR:
         if (token.operatorType == MOPERATOR_ASSIGN)
         {
+          /* Why not?
           // Assignment inside expression is not allowed.
           if (isInsideExpression)
           {
             result = MRESULT_ASSIGNMENT_INSIDE_EXPRESSION;
             goto failure;
           }
-          // Must be assigned to an variable.
+          */
+
+          // Can assign only to a variable
           if (left == NULL || left->getElementType() != MELEMENT_VARIABLE)
           {
             result = MRESULT_ASSIGNMENT_TO_NON_VARIABLE;
@@ -243,17 +264,37 @@ mresult_t ExpressionParser::parseExpression(ASTElement** dst,
           }
         }
 
-        if (op == MOPERATOR_NONE && left == NULL)
+        if (op != MOPERATOR_NONE || left == NULL)
         {
-          om = token.operatorType;
-          if (om == MOPERATOR_PLUS || om == MOPERATOR_MINUS) continue;
+          if (token.operatorType == MOPERATOR_PLUS)
+            // Ignore unary plus
+            continue;
 
+          if (token.operatorType == MOPERATOR_MINUS)
+          {
+            // Unary minus
+            result = parseExpression(&right, right, mpOperatorInfo[MOPERATOR_UMINUS].priority, true);
+            if (result != MRESULT_OK)
+              goto failure;
+
+            if (right == NULL)
+            {
+              result = MRESULT_EXPRESSION_EXPECTED;
+              goto failure;
+            }
+
+            ASTTransform* transform = new ASTTransform(_ctx.genId());
+            transform->setTransformType(MTRANSFORM_NEGATE);
+            transform->setChild(right);
+            right = transform;
+            break;
+		  }
           result = MRESULT_UNEXPECTED_TOKEN;
           goto failure;
-        }
+		}
 
         op = token.operatorType;
-        if (mpOperatorPriority[op] < minPriority)
+		if (mpOperatorInfo[op].priority < minPriority || (mpOperatorInfo[op].priority == minPriority && mpOperatorInfo[op].assoc == LeftAssoc))
         {
           _tokenizer.back(&token);
 
@@ -266,30 +307,38 @@ mresult_t ExpressionParser::parseExpression(ASTElement** dst,
       // ----------------------------------------------------------------------
       case MTOKEN_SYMBOL:
       {
+        if (left != NULL && op == MOPERATOR_NONE)
+        {
+          // Expected operator or end of expression
+          result = MRESULT_UNEXPECTED_TOKEN;
+          goto failure;
+        }
+
         const char* symbolName = _tokenizer.beg + token.pos;
         size_t symbolLength = token.len;
 
         Token ttoken;
         bool isFunction = (_tokenizer.peek(&ttoken) == MTOKEN_LPAREN);
 
-        // Parse function.
+        // Parse function
         if (isFunction)
         {
           Function* function = _ctx._ctx->functions.get(symbolName, symbolLength);
           if (function == NULL)
           {
-            result = MRESULT_NO_SYMBOL;
+            result = MRESULT_INVALID_FUNCTION;
             goto failure;
           }
 
-          // Parse LPAREN token again.
+          // Parse LPAREN token again
           _tokenizer.next(&ttoken);
 
           Vector<ASTElement*> arguments;
-          bool first = true;
 
-          // Parse function arguments.
-          for (;;)
+          // Parse function arguments
+          int numArgs = function->getArgumentsCount();
+          int n = 0;
+          for (;;++n)
           {
             _tokenizer.next(&ttoken);
 
@@ -300,19 +349,32 @@ mresult_t ExpressionParser::parseExpression(ASTElement** dst,
               goto failure;
             }
 
-            // ')' - End of function call.
+            // ')' - End of function call
             if (ttoken.tokenType == MTOKEN_RPAREN)
             {
-              break;
+              if (n == numArgs) break;
+
+              mpDeleteAll(arguments);
+              result = MRESULT_NOT_ENOUGH_ARGUMENTS;
+              goto failure;
             }
 
-            // ',' - Arguments delimiter for non-first argument.
-            if (!first)
+            // ',' - Arguments delimiter
+            if (n != 0)
             {
-              if (ttoken.tokenType != MTOKEN_COMMA)
+              if (ttoken.tokenType == MTOKEN_COMMA)
+              {
+                if (n >= numArgs)
+                {
+                  mpDeleteAll(arguments);
+                  result = MRESULT_TOO_MANY_ARGUMENTS;
+                  goto failure;
+                }
+              }
+              else
               {
                 mpDeleteAll(arguments);
-                result = MRESULT_EXPECTED_EXPRESSION;
+                result = MRESULT_UNEXPECTED_TOKEN;
                 goto failure;
               }
             }
@@ -321,7 +383,7 @@ mresult_t ExpressionParser::parseExpression(ASTElement** dst,
               _tokenizer.back(&ttoken);
             }
 
-            // Expression.
+            // Parse argument expression
             ASTElement* arg;
             if ((result = parseExpression(&arg, NULL, 0, true)) != MRESULT_OK)
             {
@@ -330,29 +392,20 @@ mresult_t ExpressionParser::parseExpression(ASTElement** dst,
             }
 
             arguments.append(arg);
-            first = false;
           }
 
-          // Validate function arguments.
-          if (function->getArguments() != arguments.getLength())
-          {
-            mpDeleteAll(arguments);
-            result = MRESULT_ARGUMENTS_MISMATCH;
-            goto failure;
-          }
-
-          // Done.
+          // Done
           ASTCall* call = new ASTCall(_ctx.genId(), function);
           call->swapArguments(arguments);
           right = call;
         }
-        // Parse variable.
         else
+        // Parse variable
         {
           Variable* var = _ctx._ctx->variables.get(symbolName, symbolLength);
           if (var == NULL)
           {
-            result = MRESULT_NO_SYMBOL;
+            result = MRESULT_INVALID_SYMBOL;
             goto failure;
           }
 
@@ -362,15 +415,6 @@ mresult_t ExpressionParser::parseExpression(ASTElement** dst,
             right = new ASTVariable(_ctx.genId(), var);
         }
 
-        if (om == MOPERATOR_MINUS)
-        {
-          ASTTransform* transform = new ASTTransform(_ctx.genId());
-          transform->setTransformType(MTRANSFORM_NEGATE);
-          transform->setChild(right);
-          right = transform;
-        }
-
-        om = MOPERATOR_NONE;
         break;
       }
       // ----------------------------------------------------------------------
@@ -381,16 +425,25 @@ mresult_t ExpressionParser::parseExpression(ASTElement** dst,
       // ----------------------------------------------------------------------
     }
 
+	MP_ASSERT(right != NULL);
+
     if (left)
     {
       _tokenizer.peek(&helper);
 
-      if (helper.tokenType == MTOKEN_OPERATOR && mpOperatorPriority[op] < mpOperatorPriority[helper.operatorType])
+      if (helper.tokenType == MTOKEN_OPERATOR)
       {
-        result = parseExpression(&right, right, mpOperatorPriority[helper.operatorType], true);
-        if (result != MRESULT_OK) { right = NULL; goto failure; }
+        int lp = mpOperatorInfo[op].priority;
+        int np = mpOperatorInfo[helper.operatorType].priority;
+        if (lp < np || (lp == np && mpOperatorInfo[op].assoc == RightAssoc))
+        {
+          result = parseExpression(&right, right, lp, true);
+          if (result != MRESULT_OK)
+            goto failure;
+        }
       }
 
+      MP_ASSERT(op != MOPERATOR_NONE);
       ASTOperator* parent = new ASTOperator(_ctx.genId(), op);
       parent->setLeft(left);
       parent->setRight(right);

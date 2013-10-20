@@ -403,12 +403,12 @@ JitVar JitCompiler::doOperator(ASTOperator* element)
   if (operatorType == MOPERATOR_POW)
   {
     ASTElement *arguments[2] = { left, right };
-    return callCustom((void *)pow, arguments, 2);
+    return callCustom((void *)(DoubleFuncPtr2)pow, arguments, 2);
   }
   if (operatorType == MOPERATOR_MOD)
   {
     ASTElement *arguments[2] = { left, right };
-    return callCustom((void *)fmod, arguments, 2);
+    return callCustom((void *)(DoubleFuncPtr2)fmod, arguments, 2);
   }
 
   if (left->getElementType() == MELEMENT_VARIABLE && right->getElementType() == MELEMENT_VARIABLE &&
@@ -585,9 +585,9 @@ JitVar JitCompiler::getConstantF64(double value)
   return getConstantI64(u.i64);
 }
 
-MEvalFunc mpCompileFunction(WorkContext& ctx, ASTElement* tree)
+MEvalFunc mpCompileFunction(WorkContext& ctx, ASTElement* tree, char** logOutput)
 {
-  bool enableLogger = false;
+  bool enableLogger = (logOutput != NULL);
   AsmJit::Compiler c;
 
   JitLogger logger;
@@ -607,9 +607,8 @@ MEvalFunc mpCompileFunction(WorkContext& ctx, ASTElement* tree)
 
   if (enableLogger)
   {
-    char* log = logger.getStringBuilder().toString();
-    printf("%s\n", log);
-    free(log);
+    *logOutput = logger.getStringBuilder().toString();
+    // should be free()ed by caller
   }
 
   return fn;

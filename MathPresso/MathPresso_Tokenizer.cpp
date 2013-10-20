@@ -49,7 +49,7 @@ Tokenizer::~Tokenizer()
 uint Tokenizer::next(Token* dst)
 {
   // Skip spaces.
-  while (cur != end && mpIsSpace(*cur)) *cur++;
+  while (cur != end && mpIsSpace(*cur)) cur++;
 
   // End of input.
   if (cur == end)
@@ -66,21 +66,34 @@ uint Tokenizer::next(Token* dst)
   // Type of token is usually determined by first input character.
   uint uc = *cur;
 
-  // Parse float.
-  if (mpIsDigit(uc))
+  // Parse integer or float
+  if (mpIsDigit(uc) || uc == '.')
   {
     uint t = MTOKEN_INTEGER;
 
-    // Parse digit part.
-    while (++cur != end)
+    // Parse integer part
+    while (mpIsDigit(uc))
     {
+      if (++cur == end) break;
       uc = *cur;
-      if (!mpIsDigit(uc)) break;
     }
 
     // Parse dot.
     if (cur != end && uc == '.')
     {
+      t = MTOKEN_FLOAT;
+      while (++cur != end)
+      {
+        uc = *cur;
+        if (!mpIsDigit(uc)) break;
+      }
+    }
+
+    // Parse exponent part
+    if (cur != end && (uc == 'E' || uc == 'e')) {
+      if (++cur == end) goto error;
+      if (*cur != '+' && *cur != '-') goto error;
+      if (cur + 1 == end) goto error;
       while (++cur != end)
       {
         uc = *cur;
@@ -92,9 +105,14 @@ uint Tokenizer::next(Token* dst)
     dst->pos = (size_t)(first - beg);
     dst->len = (size_t)(cur - first);
 
-    if (mpIsAlpha(uc)) goto error;
+    if (mpIsAlpha(uc))
+      goto error;
 
-    // Convert string to float.
+    // Single dot is not a valid number constant
+    if (*first == '.' && (cur - first) == 1)
+      goto error;
+
+    // Convert string to float
     bool ok;
     mreal_t n = mpConvertToFloat(first, (size_t)(cur - first), &ok);
     if (!ok) goto error;
@@ -104,7 +122,7 @@ uint Tokenizer::next(Token* dst)
     return t;
   }
 
-  // Parse symbol.
+  // Parse symbol
   else if (mpIsAlpha(uc) || uc == '_')
   {
     while (++cur != end)

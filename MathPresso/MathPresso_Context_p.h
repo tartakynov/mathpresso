@@ -31,7 +31,7 @@
 
 namespace MathPresso {
 
-struct ASTElement;
+class ASTElement;
 
 // ============================================================================
 // [MathPresso::MFunc]
@@ -62,7 +62,7 @@ struct Function
 
   inline void* getPtr() const { return ptr; }
   inline int getPrototype() const { return prototype; }
-  inline int getArguments() const { return prototype & 0xFF; }
+  inline int getArgumentsCount() const { return prototype & 0xFF; }
   inline int getFunctionId() const { return functionId; }
 
   void* ptr;

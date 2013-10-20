@@ -38,19 +38,25 @@ namespace MathPresso {
 
 //! @internal
 //!
-//! @brief Simplifies ast expression tree evaluating constant.
-struct Optimizer
+//! @brief Simplifies expression tree by evaluating constant nodes
+class Optimizer
 {
+  WorkContext& _ctx;
+
+public:
   Optimizer(WorkContext& ctx);
   ~Optimizer();
 
+  inline void optimize(ASTElement* &element) { element = doNode(element); }
+
+protected:
   ASTElement* doNode(ASTElement* element);
   ASTElement* doBlock(ASTBlock* element);
-
   ASTElement* doOperator(ASTOperator* element);
-  ASTElement* findConstNode(ASTElement* element, int op);
+  ASTElement* doCall(ASTCall* element);
+  ASTElement* doTransform(ASTTransform* element);
 
-  WorkContext& _ctx;
+  ASTElement* findConstNode(ASTElement* element, int op);
 };
 
 } // MathPresso namespace
