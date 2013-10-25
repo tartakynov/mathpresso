@@ -30,6 +30,8 @@
 #include "MathPresso_Context_p.h"
 #include "MathPresso_Util_p.h"
 
+#include <string>
+
 namespace MathPresso {
 
 // ============================================================================
@@ -61,7 +63,8 @@ enum MOPERATOR_TYPE
   MOPERATOR_MUL,
   MOPERATOR_DIV,
   MOPERATOR_MOD,
-  MOPERATOR_POW
+  MOPERATOR_POW,
+  MOPERATOR_UMINUS
 };
 
 //! @internal
@@ -100,7 +103,8 @@ enum MFUNCTION_TYPE
   MFUNCTION_SQRT,
   MFUNCTION_POW,
 
-  // Log.
+  // Exp/Log.
+  MFUNCTION_EXP,
   MFUNCTION_LOG,
   MFUNCTION_LOG10,
 
@@ -116,7 +120,8 @@ enum MFUNCTION_TYPE
   MFUNCTION_ASIN,
   MFUNCTION_ACOS,
   MFUNCTION_ATAN,
-  MFUNCTION_ATAN2
+  MFUNCTION_ATAN2,
+  MFUNCTION_HYPOT
 };
 
 //! @internal
@@ -167,11 +172,14 @@ public:
   //! @brief Get the parent element.
   inline ASTElement* & getParent() { return _parent; }
 
-  //! @brief Get the element type.
+  //! @brief Get the element id.
   inline uint getElementId() const { return _elementId; }
 
   //! @brief Get the element type.
   inline uint getElementType() const { return _elementType; }
+
+  //! @brief Convert element to string using reverse polish notation
+  virtual std::string toString() const = 0;
 };
 
 // ============================================================================
@@ -192,6 +200,8 @@ public:
   virtual Vector<ASTElement *> & getChildrenVector();
   virtual size_t getChildrenCount() const;
   virtual mreal_t evaluate(void* data) const;
+
+  virtual std::string toString() const override;
 };
 
 // ============================================================================
@@ -225,8 +235,10 @@ public:
   inline ASTElement* getLeft() const { return _left; }
   inline ASTElement* getRight() const { return _right; }
 
-  inline void setLeft(ASTElement* element) { _left = element; element->getParent() = this; }
-  inline void setRight(ASTElement* element) { _right = element; element->getParent() = this; }
+  inline void setLeft(ASTElement* element)  {  _left = element; if (element) element->getParent() = this; }
+  inline void setRight(ASTElement* element) { _right = element; if (element) element->getParent() = this; }
+
+  virtual std::string toString() const override;
 };
 
 // ============================================================================
@@ -250,6 +262,8 @@ public:
 
   inline mreal_t getValue() const { return _value; }
   inline void setValue(mreal_t value) { _value = value; }
+
+  virtual std::string toString() const override;
 };
 
 // ============================================================================
@@ -273,6 +287,8 @@ public:
 
   inline const Variable* getVariable() const { return _variable; }
   inline int getOffset() const { return _variable->v.offset; }
+
+  virtual std::string toString() const override;
 };
 
 // ============================================================================
@@ -291,8 +307,12 @@ public:
 
   virtual mreal_t evaluate(void* data) const;
 
+  virtual bool replaceChild(ASTElement* child, ASTElement* element) override;
+
   inline uint getOperatorType() const { return _operatorType; }
   inline void setOperatorType(int value) { _operatorType = value; }
+
+  virtual std::string toString() const override;
 };
 
 // ============================================================================
@@ -320,6 +340,8 @@ public:
   inline const Vector<ASTElement*>& getArguments() const { return _arguments; }
 
   inline bool swapArguments(Vector<ASTElement*>& other) { return _arguments.swap(other); }
+
+  virtual std::string toString() const override;
 };
 
 // ============================================================================
@@ -344,8 +366,13 @@ public:
   inline ASTElement* getChild() const { return _child; }
   inline virtual void setChild(ASTElement* element) { _child = element; element->getParent() = this; }
 
+  inline void removeChild() { _child = NULL; }
+  virtual bool replaceChild(ASTElement* child, ASTElement* element) override;
+
   inline uint getTransformType() const { return _transformType; }
   inline void setTransformType(uint transformType) { _transformType = transformType; }
+
+  virtual std::string toString() const override;
 };
 
 } // MathPresso namespace

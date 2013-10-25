@@ -60,6 +60,8 @@ struct MATHPRESSO_HIDDEN ExpressionParser
     int minPriority,
     bool isInsideExpression);
 
+  inline const Token& getLastToken() const { return _last; }
+
 protected:
   WorkContext& _ctx;
 

@@ -29,6 +29,8 @@
 #include "MathPresso_Optimizer_p.h"
 #include "MathPresso_Util_p.h"
 
+#include <limits>
+
 namespace MathPresso {
 
 Optimizer::Optimizer(WorkContext& ctx) :
@@ -48,6 +50,10 @@ ASTElement* Optimizer::doNode(ASTElement* element)
       return doBlock(reinterpret_cast<ASTBlock*>(element));
     case MELEMENT_OPERATOR:
       return doOperator(reinterpret_cast<ASTOperator*>(element));
+    case MELEMENT_TRANSFORM:
+      return doTransform(reinterpret_cast<ASTTransform*>(element));
+    case MELEMENT_CALL:
+      return doCall(reinterpret_cast<ASTCall*>(element));
     default:
       return element;
   }
@@ -55,6 +61,11 @@ ASTElement* Optimizer::doNode(ASTElement* element)
 
 ASTElement* Optimizer::doBlock(ASTBlock* element)
 {
+  ASTElement** elements = element->getChildrenElements();
+  for (size_t i = 0; i < element->getChildrenCount(); ++i)
+  {
+    elements[i] = doNode(elements[i]);
+  }
   return element;
 }
 
@@ -81,8 +92,7 @@ ASTElement* Optimizer::doOperator(ASTOperator* element)
   }
   else if (leftConst || rightConst)
   {
-    // Left or right is constant, we try to find another one in deeper which
-    // could be joined.
+    // Left or right is constant, try to find another one deeper that can be joined
     ASTElement* c;
     ASTElement* x;
 
@@ -97,6 +107,120 @@ ASTElement* Optimizer::doOperator(ASTOperator* element)
       x = left;
     }
 
+    mreal_t cvalue = c->evaluate(NULL);
+    if (cvalue == 0) // Optimize var*0, var+0, etc.
+    {
+      switch (element->getOperatorType())
+      {
+        case MOPERATOR_PLUS:
+        { // x+0 == x
+          element->replaceChild(x, NULL);
+          delete element;
+          return x;
+        }
+        case MOPERATOR_MUL:
+        { // x*0 == 0
+          element->replaceChild(c, NULL);
+          delete element;
+          return c;
+        }
+        case MOPERATOR_MINUS:
+        {
+          if (x == left) // x-0 == x
+          {
+            element->replaceChild(x, NULL);
+            delete element;
+            return x;
+          }
+          else // 0-x == -x
+          {
+            element->replaceChild(x, NULL);
+            ASTTransform* replacement = new ASTTransform(_ctx.genId());
+            replacement->setTransformType(MTRANSFORM_NEGATE);
+            replacement->setChild(x);
+            return replacement;
+          }
+        }
+        case MOPERATOR_DIV:
+        case MOPERATOR_MOD:
+        {
+          if (x == right) // 0/x == 0
+          {
+            element->replaceChild(c, NULL);
+            delete element;
+            return c;
+          }
+          else // x/0 - divide by zero!
+          {
+            // Not sure what to do here...
+
+            //ASTConstant* replacement = new ASTConstant(_ctx.genId(), std::numeric_limits<double>::quiet_NaN());
+            //replacement->getParent() = element->getParent();
+            //delete element;
+            //return replacement;
+            break;
+          }
+        }
+      }
+    }
+    else if (cvalue == 1) // Optimize var*1, var^1, etc.
+    {
+      switch (element->getOperatorType())
+      {
+        case MOPERATOR_MUL:
+        { // x*1 == x
+          element->replaceChild(x, NULL);
+          delete element;
+          return x;
+        }
+        case MOPERATOR_DIV:
+        {
+          if (x == left) // x/1 == x
+          {
+            element->replaceChild(x, NULL);
+            delete element;
+            return x;
+          }
+          else break;
+        }
+        case MOPERATOR_POW:
+        {
+          if (x == left) // x^1 == x
+          {
+            element->replaceChild(x, NULL);
+            delete element;
+            return x;
+          }
+          else // 1^x == 1
+          {
+            ASTConstant* replacement = new ASTConstant(_ctx.genId(), 1.0);
+            replacement->getParent() = element->getParent();
+            delete element;
+            return replacement;
+          }
+        }
+      }
+    }
+    else if (cvalue == -1) // Optimize var*-1, var/-1
+    {
+      switch (element->getOperatorType())
+      {
+        case MOPERATOR_DIV:
+          if (x == right) break; // skip -1/x
+          // fall through
+        case MOPERATOR_MUL:
+        {
+          // -1*x == x*-1 == x/-1 == -x
+          element->replaceChild(x, NULL);
+          ASTTransform* replacement = new ASTTransform(_ctx.genId());
+          replacement->setTransformType(MTRANSFORM_NEGATE);
+          replacement->setChild(x);
+          delete element;
+          return replacement;
+        }
+      }
+    }
+
     ASTElement* y = findConstNode(x, element->getOperatorType());
     if (y != NULL)
     {
@@ -107,7 +231,7 @@ ASTElement* Optimizer::doOperator(ASTOperator* element)
 
       mreal_t result;
 
-      // Hardcoded evaluator (we accept only PLUS or MUL operators).
+      // Hardcoded evaluator (we accept only PLUS or MUL operators)
       switch (element->getOperatorType())
       {
         case MOPERATOR_PLUS:
@@ -136,6 +260,68 @@ ASTElement* Optimizer::doOperator(ASTOperator* element)
       delete c;
     }
   }
+  return element;
+}
+
+ASTElement* Optimizer::doCall(ASTCall* element)
+{
+  Vector<ASTElement*>& arguments = element->getArguments();
+  size_t i, len = arguments.getLength();
+  bool allConst = true;
+
+  for (i = 0; i < len; i++)
+  {
+    arguments[i] = doNode(arguments[i]);
+    allConst &= arguments[i]->isConstant();
+  }
+
+  if (allConst)
+  {
+    mreal_t result = element->evaluate(NULL);
+
+    ASTElement* replacement = new ASTConstant(_ctx.genId(), result);
+    replacement->getParent() = element->getParent();
+    delete element;
+    return replacement;
+  }
+  return element;
+}
+
+ASTElement* Optimizer::doTransform(ASTTransform* element)
+{
+  if (element->isConstant())
+  {
+    mreal_t result = element->evaluate(NULL);
+
+    ASTElement* replacement = new ASTConstant(_ctx.genId(), result);
+    replacement->getParent() = element->getParent();
+    delete element;
+    return replacement;
+  }
+  ASTElement* child = doNode(element->getChild());
+  element->replaceChild(element->getChild(), child);
+
+  switch (element->getTransformType())
+  {
+    case MTRANSFORM_NEGATE:
+      if (child->getElementType() == MELEMENT_TRANSFORM)
+      {
+        ASTTransform* childTransform = reinterpret_cast<ASTTransform*>(child);
+        if (childTransform->getTransformType() == MTRANSFORM_NEGATE)
+        {
+          ASTElement* childChild = childTransform->getChild();
+          childTransform->removeChild();
+          delete element;
+          return childChild;
+        }
+      }
+      break;
+    case MTRANSFORM_NONE:
+      // Should not happen
+    default:
+      MP_ASSERT_NOT_REACHED();
+  }
+
   return element;
 }
 

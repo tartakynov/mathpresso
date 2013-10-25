@@ -36,7 +36,6 @@
 #include "MathPresso_JIT_p.h"
 
 #include <math.h>
-#include <string.h>
 
 namespace MathPresso {
 
@@ -74,7 +73,8 @@ static mresult_t Context_addFunction(Context* self, const char* name, void* ptr,
   size_t nlen = strlen(name);
 
   Function* fdata = d->functions.get(name, nlen);
-  if (fdata && fdata->ptr == ptr && fdata->prototype == prototype) return MRESULT_OK;
+  if (fdata && fdata->ptr == ptr && fdata->prototype == prototype)
+    return MRESULT_OK;
 
   if (!d->isDetached())
   {
@@ -94,12 +94,12 @@ static mresult_t Context_addFunction(Context* self, const char* name, void* ptr,
 // [MathPresso::Context - Environment]
 // ============================================================================
 
-static mreal_t min(mreal_t x, mreal_t y) { return x < y ? x : y; }
-static mreal_t max(mreal_t x, mreal_t y) { return x > y ? x : y; }
-static mreal_t avg(mreal_t x, mreal_t y) { return (x + y) * 0.5f; }
+static mreal_t _min(mreal_t x, mreal_t y) { return x < y ? x : y; }
+static mreal_t _max(mreal_t x, mreal_t y) { return x > y ? x : y; }
+static mreal_t _round(mreal_t x) { return (mreal_t)( (int)((x < 0.0f) ? x - 0.5f : x + 0.5f) ); }
 
-static mreal_t round(mreal_t x) { return (mreal_t)( (int)((x < 0.0f) ? x - 0.5f : x + 0.5f) ); }
-static mreal_t recip(mreal_t x) { return 1.0f/x; }
+static mreal_t _avg(mreal_t x, mreal_t y) { return (x + y) * 0.5f; }
+static mreal_t _recip(mreal_t x) { return 1.0f/x; }
 
 #define MP_ADD_CONST(self, name, value) \
   do { \
@@ -115,41 +115,41 @@ static mreal_t recip(mreal_t x) { return 1.0f/x; }
 
 static mresult_t Context_addEnvironment_Math(Context* self)
 {
-  // Constants.
-  MP_ADD_CONST(self, "E", 2.7182818284590452354);
+  // Constants
   MP_ADD_CONST(self, "PI", 3.14159265358979323846);
+  MP_ADD_CONST(self, "E", 2.7182818284590452354); // can use exp(1) instead
 
-  // Functions.
-  MP_ADD_FUNCTION(self, "min"       , min   , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_MIN);
-  MP_ADD_FUNCTION(self, "max"       , max   , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_MAX);
-  MP_ADD_FUNCTION(self, "avg"       , avg   , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_AVG);
+  // Functions
+  MP_ADD_FUNCTION(self, "min"       , _min  , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_MIN);
+  MP_ADD_FUNCTION(self, "max"       , _max  , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_MAX);
+  MP_ADD_FUNCTION(self, "avg"       , _avg  , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_AVG);
+  MP_ADD_FUNCTION(self, "reciprocal", _recip, MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_RECIPROCAL); // Why would anyone want this as a function??
+  MP_ADD_FUNCTION(self, "round"     , _round, MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ROUND);
 
-  MP_ADD_FUNCTION(self, "ceil"      , ceil  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_CEIL);
-  MP_ADD_FUNCTION(self, "floor"     , floor , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_FLOOR);
-  MP_ADD_FUNCTION(self, "round"     , round , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ROUND);
+  MP_ADD_FUNCTION(self, "ceil" , (DoubleFuncPtr1)ceil  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_CEIL);
+  MP_ADD_FUNCTION(self, "floor", (DoubleFuncPtr1)floor , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_FLOOR);
+  MP_ADD_FUNCTION(self, "abs"  , (DoubleFuncPtr1)fabs  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ABS);
 
-  MP_ADD_FUNCTION(self, "abs"       , fabs  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ABS);
+  MP_ADD_FUNCTION(self, "sqrt" , (DoubleFuncPtr1)sqrt  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_SQRT);
+  MP_ADD_FUNCTION(self, "pow"  , (DoubleFuncPtr2)pow   , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_POW);
 
-  MP_ADD_FUNCTION(self, "reciprocal", recip , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_RECIPROCAL);
+  MP_ADD_FUNCTION(self, "exp"  , (DoubleFuncPtr1)exp   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_EXP);
+  MP_ADD_FUNCTION(self, "log"  , (DoubleFuncPtr1)log   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_LOG);
+  MP_ADD_FUNCTION(self, "log10", (DoubleFuncPtr1)log10 , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_LOG10);
 
-  MP_ADD_FUNCTION(self, "sqrt"      , sqrt  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_SQRT);
-  MP_ADD_FUNCTION(self, "pow"       , pow   , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_POW);
+  MP_ADD_FUNCTION(self, "sin"  , (DoubleFuncPtr1)sin   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_SIN);
+  MP_ADD_FUNCTION(self, "cos"  , (DoubleFuncPtr1)cos   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_COS);
+  MP_ADD_FUNCTION(self, "tan"  , (DoubleFuncPtr1)tanf  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_TAN);
 
-  MP_ADD_FUNCTION(self, "log"       , log   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_LOG);
-  MP_ADD_FUNCTION(self, "log10"     , log10 , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_LOG10);
+  MP_ADD_FUNCTION(self, "sinh" , (DoubleFuncPtr1)sinh  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_SINH);
+  MP_ADD_FUNCTION(self, "cosh" , (DoubleFuncPtr1)cosh  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_COSH);
+  MP_ADD_FUNCTION(self, "tanh" , (DoubleFuncPtr1)tanh  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_TANH);
 
-  MP_ADD_FUNCTION(self, "sin"       , sin   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_SIN);
-  MP_ADD_FUNCTION(self, "cos"       , cos   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_COS);
-  MP_ADD_FUNCTION(self, "tan"       , tanf   , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_TAN);
-
-  MP_ADD_FUNCTION(self, "sinh"      , sinh  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_SINH);
-  MP_ADD_FUNCTION(self, "cosh"      , cosh  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_COSH);
-  MP_ADD_FUNCTION(self, "tanh"      , tanh  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_TANH);
-
-  MP_ADD_FUNCTION(self, "asin"      , asin  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ASIN);
-  MP_ADD_FUNCTION(self, "acos"      , acos  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ACOS);
-  MP_ADD_FUNCTION(self, "atan"      , atan  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ATAN);
-  MP_ADD_FUNCTION(self, "atan2"     , atan2 , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_ATAN2);
+  MP_ADD_FUNCTION(self, "asin" , (DoubleFuncPtr1)asin  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ASIN);
+  MP_ADD_FUNCTION(self, "acos" , (DoubleFuncPtr1)acos  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ACOS);
+  MP_ADD_FUNCTION(self, "atan" , (DoubleFuncPtr1)atan  , MFUNC_F_ARG1 | MFUNC_EVAL, MFUNCTION_ATAN);
+  MP_ADD_FUNCTION(self, "atan2", (DoubleFuncPtr2)atan2 , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_ATAN2);
+  MP_ADD_FUNCTION(self, "hypot", (DoubleFuncPtr2)hypot , MFUNC_F_ARG2 | MFUNC_EVAL, MFUNCTION_HYPOT);
 
   return MRESULT_OK;
 }
@@ -359,6 +359,43 @@ Expression::~Expression()
   if (_privateData) delete reinterpret_cast<ExpressionPrivate*>(_privateData);
 }
 
+const char* ErrorText[] =
+{
+  "No error",
+  //MRESULT_OK = 0,
+  "No memory",
+  //MRESULT_NO_MEMORY = 1,
+  "No expression",
+  //MRESULT_NO_EXPRESSION = 2,
+  "Invalid variable or constant name",
+  //MRESULT_NO_SYMBOL = 3,
+  "Invalid function name",
+  //MRESULT_INVALID_FUNCTION = 4,
+  "Invalid token",
+  //MRESULT_INVALID_TOKEN = 5,
+  "Unexpected token",
+  //MRESULT_UNEXPECTED_TOKEN = 6,
+  "Expression expected",
+  //MRESULT_EXPRESSION_EXPECTED = 7,
+  "Invalid assignment",
+  //MRESULT_ASSIGNMENT_TO_NON_VARIABLE = 8,
+  "Assignment inside expression",
+  //MRESULT_ASSIGNMENT_INSIDE_EXPRESSION = 9,
+  "Not enough function arguments",
+  //MRESULT_NOT_ENOUGH_ARGUMENTS = 10,
+  "Too many function arguments",
+  //MRESULT_TOO_MANY_ARGUMENTS = 10,
+  "JIT compiler error"
+  //MRESULT_JIT_ERROR = 12,
+};
+
+static const char* getErrorText(mresult_t mResult) {
+  if (mResult >=0 && mResult < sizeof(ErrorText)/sizeof(const char*))
+    return ErrorText[mResult];
+  else
+    return "Invalid error";
+}
+
 // ============================================================================
 // [MathPresso::Expression - Create / Free]
 // ============================================================================
@@ -370,41 +407,59 @@ mresult_t Expression::create(const Context& ectx, const char* expression, int op
   ExpressionPrivate* p = reinterpret_cast<ExpressionPrivate*>(_privateData);
   WorkContext ctx(ectx);
 
-  // Destroy previous expression and prepare for error state (if something 
-  // will fail).
+  // Destroy previous expression and prepare for error state (if something fails)
   free();
 
-  // Parse the expression.
+  // Parse the expression
   ExpressionParser parser(ctx, expression, strlen(expression));
 
   ASTElement* ast = NULL;
   int result = parser.parse(&ast);
-  if (result != MRESULT_OK) return result;
 
-  // If something failed, report it, but don't continue.
-  if (ast == NULL) return MRESULT_NO_EXPRESSION;
+  if (result == MRESULT_OK && ast == NULL)
+    result = MRESULT_NO_EXPRESSION;
 
-  // Simplify the expression, evaluating all constant parts.
+  errorMessage = getErrorText(result);
+  if (result != MRESULT_OK)
   {
-    Optimizer simplifier(ctx);
-    ast = simplifier.doNode(ast);
+    const Token& lastToken = parser.getLastToken();
+    errorPos = lastToken.pos;
+
+    return result;
   }
 
-  // Compile using JIT compiler if enabled.
+  if ((options & MOPTION_NO_OPTIMIZE) == 0)
+  {
+    Optimizer optimizer(ctx);
+    optimizer.optimize(ast);
+  }
+
+  if (options & MOPTION_VERBOSE)
+  {
+    astRpn = ast->toString();
+
+    char* d = mpCreateDot(ctx, ast);
+    astGraph = d;
+    ::free((void*)d);
+  }
+
+  // Compile using JIT compiler if enabled
   if (options & MOPTION_NO_JIT)
     _evaluate = NULL;
   else
-    _evaluate = mpCompileFunction(ctx, ast);
-
-/*
   {
-    char* d = mpCreateDot(ctx, ast);
-    printf(f, "%s\n", d);
-    ::free((void*)d);
+    if ((options & MOPTION_VERBOSE) != 0)
+    {
+      char* log;
+      _evaluate = mpCompileFunction(ctx, ast, &log);
+      jitLog = log;
+      ::free(log);
+    }
+    else
+      _evaluate = mpCompileFunction(ctx, ast);
   }
-*/
 
-  // Fallback to evaluation if JIT compiling failed or not enabled.
+  // Fallback to evaluation if JIT compilation failed or not enabled
   if (_evaluate == NULL)
   {
     _evaluate = mEvalExpression;
