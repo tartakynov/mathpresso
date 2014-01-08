@@ -1,5 +1,5 @@
 # MathPresso - Mathematical Expression Evaluator And Jit Compiler for C++ Language
-This is fork of MathPresso. Main project is located at http://code.google.com/p/mathpresso/
+This is fork of MathPresso originally written by Petr Kobalicek. Main project is located at http://code.google.com/p/mathpresso/
 
 MathPresso is C++ library that is able to parse and evaluate mathematical
 expressions. Because evaluating expressions can be slow MathPresso contains
